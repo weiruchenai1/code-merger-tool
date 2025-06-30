@@ -1,0 +1,900 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>智能文件夹代码合并工具</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .container {
+            background: white;
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+            font-size: 2.2em;
+        }
+        
+        .upload-area {
+            border: 3px dashed #667eea;
+            border-radius: 12px;
+            padding: 40px;
+            text-align: center;
+            background: #f8f9ff;
+            margin-bottom: 20px;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        
+        .upload-area:hover {
+            border-color: #764ba2;
+            background: #f0f2ff;
+        }
+        
+        .upload-area.dragover {
+            border-color: #764ba2;
+            background: #e8ebff;
+            transform: scale(1.02);
+        }
+        
+        .upload-text {
+            font-size: 1.2em;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .file-input {
+            display: none;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            margin: 10px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+        
+        .btn:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .main-content {
+            display: flex;
+            gap: 20px;
+            margin-top: 20px;
+        }
+        
+        .left-panel {
+            flex: 1;
+            min-width: 400px;
+        }
+        
+        .right-panel {
+            flex: 1;
+            min-width: 400px;
+        }
+        
+        .project-info {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .project-info label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #333;
+        }
+        
+        .project-info input {
+            width: 100%;
+            padding: 10px;
+            border: 2px solid #e9ecef;
+            border-radius: 6px;
+            font-size: 16px;
+        }
+        
+        .project-info input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .file-tree {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            max-height: 500px;
+            overflow-y: auto;
+            border: 1px solid #e9ecef;
+        }
+        
+        .tree-item {
+            display: flex;
+            align-items: center;
+            padding: 5px 0;
+            cursor: pointer;
+            user-select: none;
+            border-radius: 4px;
+            margin: 2px 0;
+        }
+        
+        .tree-item:hover {
+            background: #e9ecef;
+        }
+        
+        .tree-item.selected {
+            background: #d1ecf1;
+            border: 1px solid #bee5eb;
+        }
+        
+        .tree-item.excluded {
+            opacity: 0.5;
+            text-decoration: line-through;
+        }
+        
+        .tree-indent {
+            width: 20px;
+            height: 1px;
+        }
+        
+        .tree-icon {
+            margin-right: 8px;
+            font-size: 16px;
+            width: 20px;
+            text-align: center;
+        }
+        
+        .tree-toggle {
+            margin-right: 5px;
+            cursor: pointer;
+            width: 15px;
+            text-align: center;
+            font-size: 12px;
+        }
+        
+        .tree-name {
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+        }
+        
+        .tree-size {
+            font-size: 12px;
+            color: #666;
+            margin-left: 10px;
+        }
+        
+        .controls {
+            text-align: center;
+            margin: 20px 0;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 20px;
+            background: #e9ecef;
+            border-radius: 10px;
+            overflow: hidden;
+            margin: 20px 0;
+            display: none;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+        
+        .output-area {
+            margin-top: 20px;
+        }
+        
+        .output-textarea {
+            width: 100%;
+            height: 400px;
+            border: 2px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            resize: vertical;
+            background: #f8f9fa;
+        }
+        
+        .stats {
+            background: #e3f2fd;
+            border: 1px solid #2196f3;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 15px 0;
+            font-size: 14px;
+            color: #1976d2;
+        }
+        
+        .info-box {
+            background: #e8f5e8;
+            border: 1px solid #4caf50;
+            border-radius: 8px;
+            padding: 15px;
+            margin: 20px 0;
+            font-size: 14px;
+            color: #2e7d32;
+        }
+        
+        @media (max-width: 1024px) {
+            .main-content {
+                flex-direction: column;
+            }
+            
+            .left-panel, .right-panel {
+                min-width: auto;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>📁 智能文件夹代码合并工具</h1>
+        
+        <div class="info-box">
+            <strong>💡 使用说明：</strong><br>
+            1. 拖拽或选择整个项目文件夹<br>
+            2. 在左侧文件树中点击文件夹可以排除/包含整个文件夹<br>
+            3. 点击单个文件可以单独排除/包含该文件<br>
+            4. 工具会自动获取文件夹名称，您也可以手动修改项目名称
+        </div>
+        
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-text">
+                📂 拖拽整个项目文件夹到这里
+            </div>
+            <div style="color: #999; font-size: 0.9em; margin: 10px 0;">
+                或者点击下面的按钮选择文件夹
+            </div>
+            <button class="btn" onclick="selectFolder()">📁 选择项目文件夹</button>
+            <input type="file" id="fileInput" class="file-input" webkitdirectory multiple>
+        </div>
+        
+        <div class="main-content" id="mainContent" style="display: none;">
+            <div class="left-panel">
+                <div class="project-info">
+                    <label for="projectName">项目名称：</label>
+                    <input type="text" id="projectName" placeholder="请输入项目名称">
+                </div>
+                
+                <div class="stats" id="stats"></div>
+                
+                <h3>📂 项目文件结构</h3>
+                <div class="file-tree" id="fileTree"></div>
+                
+                <div class="controls">
+                    <button class="btn" onclick="selectAll()">✅ 全选</button>
+                    <button class="btn" onclick="deselectAll()">❌ 全不选</button>
+                    <button class="btn" onclick="resetSelection()">🔄 重置选择</button>
+                </div>
+            </div>
+            
+            <div class="right-panel">
+                <div class="controls">
+                    <button class="btn" id="mergeBtn" onclick="mergeFiles()">🔄 生成代码文档</button>
+                    <button class="btn" id="downloadBtn" disabled onclick="downloadMarkdown()">💾 下载 Markdown</button>
+                    <button class="btn" onclick="clearAll()">🗑️ 重新选择文件夹</button>
+                </div>
+                
+                <div class="progress-bar" id="progressBar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                
+                <div class="output-area">
+                    <h3>📄 生成的文档预览：</h3>
+                    <textarea id="outputText" class="output-textarea" placeholder="生成的代码文档将显示在这里..." readonly></textarea>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let projectFiles = [];
+        let fileTree = {};
+        let selectedFiles = new Set();
+        let mergedContent = '';
+        
+        const uploadArea = document.getElementById('uploadArea');
+        const fileInput = document.getElementById('fileInput');
+        const mainContent = document.getElementById('mainContent');
+        const projectNameInput = document.getElementById('projectName');
+        const fileTreeContainer = document.getElementById('fileTree');
+        const statsDiv = document.getElementById('stats');
+        const outputText = document.getElementById('outputText');
+        const progressBar = document.getElementById('progressBar');
+        const progressFill = document.getElementById('progressFill');
+        const downloadBtn = document.getElementById('downloadBtn');
+        
+        // 事件监听
+        uploadArea.addEventListener('dragover', handleDragOver);
+        uploadArea.addEventListener('dragleave', handleDragLeave);
+        uploadArea.addEventListener('drop', handleDrop);
+        fileInput.addEventListener('change', handleFolderSelect);
+        
+        function selectFolder() {
+            fileInput.click();
+        }
+        
+        function handleDragOver(e) {
+            e.preventDefault();
+            uploadArea.classList.add('dragover');
+        }
+        
+        function handleDragLeave(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+        }
+        
+        function handleDrop(e) {
+            e.preventDefault();
+            uploadArea.classList.remove('dragover');
+            
+            const items = e.dataTransfer.items;
+            if (items) {
+                processDroppedItems(items);
+            }
+        }
+        
+        async function processDroppedItems(items) {
+            projectFiles = [];
+            
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (item.kind === 'file') {
+                    const entry = item.webkitGetAsEntry();
+                    if (entry) {
+                        await processEntry(entry, '');
+                    }
+                }
+            }
+            
+            initializeProject();
+        }
+        
+        async function processEntry(entry, path) {
+            if (entry.isFile) {
+                const file = await new Promise((resolve) => {
+                    entry.file(resolve);
+                });
+                file.relativePath = path + entry.name;
+                file.fullPath = path + entry.name;
+                projectFiles.push(file);
+            } else if (entry.isDirectory) {
+                const reader = entry.createReader();
+                const entries = await new Promise((resolve) => {
+                    reader.readEntries(resolve);
+                });
+                
+                for (const childEntry of entries) {
+                    await processEntry(childEntry, path + entry.name + '/');
+                }
+            }
+        }
+        
+        function handleFolderSelect(e) {
+            projectFiles = Array.from(e.target.files);
+            
+            projectFiles.forEach(file => {
+                file.relativePath = file.webkitRelativePath;
+                file.fullPath = file.webkitRelativePath;
+            });
+            
+            initializeProject();
+        }
+        
+        function initializeProject() {
+            if (projectFiles.length === 0) return;
+            
+            // 自动设置项目名称（取第一个文件的根文件夹名）
+            const firstFilePath = projectFiles[0].relativePath || projectFiles[0].name;
+            const rootFolderName = firstFilePath.split('/')[0];
+            projectNameInput.value = rootFolderName;
+            
+            // 初始化文件选择（排除常见的无关文件）
+            initializeFileSelection();
+            
+            // 构建文件树
+            buildFileTree();
+            
+            // 显示主界面
+            uploadArea.style.display = 'none';
+            mainContent.style.display = 'block';
+            
+            // 更新统计信息
+            updateStats();
+        }
+        
+        function initializeFileSelection() {
+            selectedFiles.clear();
+            
+            const excludePatterns = [
+                'node_modules', '.git', 'dist', 'build', '.cache', 
+                '*.log', '*.tmp', '*.cache', '.DS_Store', 'Thumbs.db'
+            ];
+            
+            projectFiles.forEach((file, index) => {
+                const path = file.relativePath || file.name;
+                let shouldInclude = true;
+                
+                // 检查排除模式
+                for (const pattern of excludePatterns) {
+                    if (matchPattern(path, pattern)) {
+                        shouldInclude = false;
+                        break;
+                    }
+                }
+                
+                // 检查隐藏文件
+                if (isHiddenFile(path)) {
+                    shouldInclude = false;
+                }
+                
+                // 检查二进制文件
+                if (isBinaryFile(file.name)) {
+                    shouldInclude = false;
+                }
+                
+                if (shouldInclude) {
+                    selectedFiles.add(index);
+                }
+            });
+        }
+        
+        function buildFileTree() {
+            fileTree = {};
+            
+            projectFiles.forEach((file, index) => {
+                const path = file.relativePath || file.name;
+                const parts = path.split('/');
+                let current = fileTree;
+                
+                parts.forEach((part, partIndex) => {
+                    if (!current[part]) {
+                        current[part] = {
+                            type: partIndex === parts.length - 1 ? 'file' : 'folder',
+                            children: {},
+                            fileIndex: partIndex === parts.length - 1 ? index : null,
+                            expanded: true,
+                            path: parts.slice(0, partIndex + 1).join('/')
+                        };
+                    }
+                    current = current[part].children;
+                });
+            });
+            
+            renderFileTree();
+        }
+        
+        function renderFileTree() {
+            fileTreeContainer.innerHTML = '';
+            renderTreeNode(fileTree, fileTreeContainer, 0);
+        }
+        
+        function renderTreeNode(node, container, depth) {
+            const entries = Object.entries(node).sort(([a, aData], [b, bData]) => {
+                if (aData.type !== bData.type) {
+                    return aData.type === 'folder' ? -1 : 1;
+                }
+                return a.localeCompare(b);
+            });
+            
+            entries.forEach(([name, data]) => {
+                const item = document.createElement('div');
+                item.className = 'tree-item';
+                
+                // 缩进
+                for (let i = 0; i < depth; i++) {
+                    const indent = document.createElement('div');
+                    indent.className = 'tree-indent';
+                    item.appendChild(indent);
+                }
+                
+                // 展开/折叠按钮
+                if (data.type === 'folder') {
+                    const toggle = document.createElement('div');
+                    toggle.className = 'tree-toggle';
+                    toggle.textContent = data.expanded ? '▼' : '▶';
+                    toggle.onclick = (e) => {
+                        e.stopPropagation();
+                        data.expanded = !data.expanded;
+                        renderFileTree();
+                    };
+                    item.appendChild(toggle);
+                } else {
+                    const spacer = document.createElement('div');
+                    spacer.className = 'tree-toggle';
+                    item.appendChild(spacer);
+                }
+                
+                // 图标
+                const icon = document.createElement('div');
+                icon.className = 'tree-icon';
+                icon.textContent = data.type === 'folder' ? '📁' : '📄';
+                item.appendChild(icon);
+                
+                // 名称
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'tree-name';
+                nameDiv.textContent = name;
+                item.appendChild(nameDiv);
+                
+                // 文件大小
+                if (data.type === 'file') {
+                    const sizeDiv = document.createElement('div');
+                    sizeDiv.className = 'tree-size';
+                    sizeDiv.textContent = formatFileSize(projectFiles[data.fileIndex].size);
+                    item.appendChild(sizeDiv);
+                }
+                
+                // 设置选中状态
+                if (data.type === 'file') {
+                    if (selectedFiles.has(data.fileIndex)) {
+                        item.classList.add('selected');
+                    } else {
+                        item.classList.add('excluded');
+                    }
+                } else {
+                    const folderFiles = getFolderFiles(data.path);
+                    const selectedCount = folderFiles.filter(idx => selectedFiles.has(idx)).length;
+                    if (selectedCount === 0) {
+                        item.classList.add('excluded');
+                    } else if (selectedCount === folderFiles.length) {
+                        item.classList.add('selected');
+                    }
+                }
+                
+                // 点击事件
+                item.onclick = () => {
+                    if (data.type === 'file') {
+                        toggleFile(data.fileIndex);
+                    } else {
+                        toggleFolder(data.path);
+                    }
+                };
+                
+                container.appendChild(item);
+                
+                // 渲染子节点
+                if (data.type === 'folder' && data.expanded) {
+                    renderTreeNode(data.children, container, depth + 1);
+                }
+            });
+        }
+        
+        function getFolderFiles(folderPath) {
+            const files = [];
+            projectFiles.forEach((file, index) => {
+                const path = file.relativePath || file.name;
+                if (path.startsWith(folderPath + '/') || path === folderPath) {
+                    files.push(index);
+                }
+            });
+            return files;
+        }
+        
+        function toggleFile(fileIndex) {
+            if (selectedFiles.has(fileIndex)) {
+                selectedFiles.delete(fileIndex);
+            } else {
+                selectedFiles.add(fileIndex);
+            }
+            renderFileTree();
+            updateStats();
+        }
+        
+        function toggleFolder(folderPath) {
+            const folderFiles = getFolderFiles(folderPath);
+            const selectedCount = folderFiles.filter(idx => selectedFiles.has(idx)).length;
+            
+            if (selectedCount === folderFiles.length) {
+                // 全部选中，则取消选中
+                folderFiles.forEach(idx => selectedFiles.delete(idx));
+            } else {
+                // 部分或全部未选中，则全选
+                folderFiles.forEach(idx => selectedFiles.add(idx));
+            }
+            
+            renderFileTree();
+            updateStats();
+        }
+        
+        function selectAll() {
+            selectedFiles.clear();
+            projectFiles.forEach((file, index) => {
+                selectedFiles.add(index);
+            });
+            renderFileTree();
+            updateStats();
+        }
+        
+        function deselectAll() {
+            selectedFiles.clear();
+            renderFileTree();
+            updateStats();
+        }
+        
+        function resetSelection() {
+            initializeFileSelection();
+            renderFileTree();
+            updateStats();
+        }
+        
+        function updateStats() {
+            const totalFiles = projectFiles.length;
+            const selectedCount = selectedFiles.size;
+            const totalSize = Array.from(selectedFiles).reduce((sum, idx) => {
+                return sum + projectFiles[idx].size;
+            }, 0);
+            
+            statsDiv.innerHTML = `
+                📊 <strong>文件统计</strong><br>
+                总文件数：${totalFiles} 个<br>
+                已选择：${selectedCount} 个<br>
+                总大小：${formatFileSize(totalSize)}
+            `;
+        }
+        
+        async function mergeFiles() {
+            if (selectedFiles.size === 0) {
+                alert('请至少选择一个文件！');
+                return;
+            }
+            
+            const projectName = projectNameInput.value.trim() || '项目';
+            mergedContent = `# ${projectName} 代码文档\n\n`;
+            mergedContent += `生成时间：${new Date().toLocaleString()}\n\n`;
+            mergedContent += `包含文件数量：${selectedFiles.size}\n\n`;
+            mergedContent += '---\n\n';
+            
+            // 生成目录结构
+            mergedContent += '## 📁 项目目录结构\n\n';
+            mergedContent += '```\n' + generateSelectedFileTree() + '\n```\n\n';
+            mergedContent += '---\n\n';
+            
+            progressBar.style.display = 'block';
+            
+            // 按路径排序选中的文件
+            const sortedSelectedFiles = Array.from(selectedFiles)
+                .map(idx => ({ file: projectFiles[idx], index: idx }))
+                .sort((a, b) => {
+                    const pathA = a.file.relativePath || a.file.name;
+                    const pathB = b.file.relativePath || b.file.name;
+                    return pathA.localeCompare(pathB);
+                });
+            
+            for (let i = 0; i < sortedSelectedFiles.length; i++) {
+                const { file } = sortedSelectedFiles[i];
+                const progress = ((i + 1) / sortedSelectedFiles.length) * 100;
+                progressFill.style.width = `${progress}%`;
+                
+                try {
+                    const filePath = file.relativePath || file.name;
+                    const content = await readFileContent(file);
+                    const fileExtension = getFileExtension(file.name);
+                    
+                    mergedContent += `## 📄 ${projectName}\\${filePath.replace(/\//g, '\\')}\n\n`;
+                    
+                    if (content.trim()) {
+                        mergedContent += '```' + fileExtension + '\n';
+                        mergedContent += content;
+                        mergedContent += '\n```\n\n';
+                    } else {
+                        mergedContent += '*（空文件）*\n\n';
+                    }
+                    
+                } catch (error) {
+                    const filePath = file.relativePath || file.name;
+                    mergedContent += `## 📄 ${projectName}\\${filePath.replace(/\//g, '\\')}\n\n`;
+                    mergedContent += `❌ 错误：无法读取文件内容 - ${error.message}\n\n`;
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 10));
+            }
+            
+            outputText.value = mergedContent;
+            downloadBtn.disabled = false;
+            progressBar.style.display = 'none';
+            progressFill.style.width = '0%';
+        }
+        
+        function generateSelectedFileTree() {
+            const selectedPaths = Array.from(selectedFiles).map(idx => {
+                const file = projectFiles[idx];
+                return file.relativePath || file.name;
+            });
+            
+            const tree = {};
+            selectedPaths.forEach(path => {
+                const parts = path.split('/');
+                let current = tree;
+                
+                parts.forEach((part, index) => {
+                    if (!current[part]) {
+                        current[part] = index === parts.length - 1 ? null : {};
+                    }
+                    if (index < parts.length - 1) {
+                        current = current[part];
+                    }
+                });
+            });
+            
+            return generateTreeString(tree, '');
+        }
+        
+        function generateTreeString(tree, prefix) {
+            let result = '';
+            const entries = Object.entries(tree).sort(([a, aVal], [b, bVal]) => {
+                const aIsDir = aVal !== null;
+                const bIsDir = bVal !== null;
+                if (aIsDir !== bIsDir) {
+                    return bIsDir - aIsDir;
+                }
+                return a.localeCompare(b);
+            });
+            
+            entries.forEach(([name, children], index) => {
+                const isLast = index === entries.length - 1;
+                const connector = isLast ? '└── ' : '├── ';
+                const isDir = children !== null;
+                const icon = isDir ? '📁 ' : '📄 ';
+                
+                result += prefix + connector + icon + name + '\n';
+                
+                if (isDir) {
+                    const newPrefix = prefix + (isLast ? '    ' : '│   ');
+                    result += generateTreeString(children, newPrefix);
+                }
+            });
+            
+            return result;
+        }
+        
+        function downloadMarkdown() {
+            if (!mergedContent) return;
+            
+            const projectName = projectNameInput.value.trim() || '项目';
+            const blob = new Blob([mergedContent], { type: 'text/markdown;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${projectName}_代码文档.md`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        
+        function clearAll() {
+            projectFiles = [];
+            selectedFiles.clear();
+            mergedContent = '';
+            fileInput.value = '';
+            outputText.value = '';
+            downloadBtn.disabled = true;
+            uploadArea.style.display = 'block';
+            mainContent.style.display = 'none';
+            progressBar.style.display = 'none';
+            progressFill.style.width = '0%';
+        }
+        
+        // 工具函数
+        function matchPattern(path, pattern) {
+            const regex = new RegExp(
+                pattern.replace(/\*/g, '.*').replace(/\?/g, '.'),
+                'i'
+            );
+            return regex.test(path) || path.includes(pattern);
+        }
+        
+        function isHiddenFile(path) {
+            return path.split('/').some(part => part.startsWith('.') && part !== '.' && part !== '..');
+        }
+        
+        function isBinaryFile(filename) {
+            const binaryExtensions = [
+                'jpg', 'jpeg', 'png', 'gif', 'bmp', 'svg', 'ico',
+                'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx',
+                'zip', 'rar', '7z', 'tar', 'gz',
+                'exe', 'dll', 'so', 'dylib',
+                'mp3', 'mp4', 'avi', 'mov', 'wav',
+                'ttf', 'otf', 'woff', 'woff2'
+            ];
+            const ext = filename.split('.').pop().toLowerCase();
+            return binaryExtensions.includes(ext);
+        }
+        
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+        
+        function readFileContent(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = (e) => resolve(e.target.result);
+                reader.onerror = (e) => reject(new Error('文件读取失败'));
+                reader.readAsText(file, 'UTF-8');
+            });
+        }
+        
+        function getFileExtension(filename) {
+            const ext = filename.split('.').pop().toLowerCase();
+            const languageMap = {
+                'js': 'javascript',
+                'ts': 'typescript',
+                'tsx': 'typescript',
+                'jsx': 'javascript',
+                'py': 'python',
+                'java': 'java',
+                'cpp': 'cpp',
+                'c': 'c',
+                'cs': 'csharp',
+                'php': 'php',
+                'rb': 'ruby',
+                'go': 'go',
+                'rs': 'rust',
+                'kt': 'kotlin',
+                'swift': 'swift',
+                'html': 'html',
+                'css': 'css',
+                'scss': 'scss',
+                'sass': 'sass',
+                'less': 'less',
+                'json': 'json',
+                'xml': 'xml',
+                'yml': 'yaml',
+                'yaml': 'yaml',
+                'md': 'markdown',
+                'sh': 'bash',
+                'bat': 'batch',
+                'ps1': 'powershell',
+                'sql': 'sql',
+                'dockerfile': 'dockerfile',
+                'gitignore': 'gitignore',
+                'env': 'bash',
+                'toml': 'toml',
+                'ini': 'ini',
+                'conf': 'conf',
+                'cfg': 'ini'
+            };
+            return languageMap[ext] || ext;
+        }
+    </script>
+</body>
+</html>
